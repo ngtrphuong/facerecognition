@@ -29,6 +29,7 @@ class CameraDetector extends StatefulWidget {
 }
 
 class _CameraDetectorState extends State<CameraDetector> {
+
   File jsonFile;
   dynamic data = {};
   double threshold = 1.0;
@@ -42,10 +43,11 @@ class _CameraDetectorState extends State<CameraDetector> {
   bool _isDetecting = false;
   CameraLensDirection _direction = CameraLensDirection.front;
   bool _faceFound = false;
+  bool _camPos = false;
 
   final FaceDetector _faceDetector = GoogleVision.instance
       .faceDetector(FaceDetectorOptions(
-        enableLandmarks: false,
+        enableLandmarks: true,
         enableContours: true,
         enableTracking: true,
         enableClassification: false,
@@ -95,6 +97,12 @@ class _CameraDetectorState extends State<CameraDetector> {
     await loadModel();
     final CameraDescription description =
     await ScannerUtils.getCamera(_direction);
+
+    if (_direction == CameraLensDirection.front) {
+      _camPos = false;
+    } else {
+      _camPos = true;
+    }
 
     _camera = CameraController(
       description,
@@ -185,8 +193,8 @@ class _CameraDetectorState extends State<CameraDetector> {
 
     assert(_currentDetector == Detector.face);
 
-    if (_landMarkFace) painter = FaceDetectorLandmarkPainter(imageSize, _scanResults);
-    else painter = FaceDetectorNormalPainter(imageSize, _scanResults);
+    if (_landMarkFace) painter = FaceDetectorLandmarkPainter(imageSize, _scanResults, _camPos);
+    else painter = FaceDetectorNormalPainter(imageSize, _scanResults, _camPos);
 
     return CustomPaint(
       painter: painter,
@@ -217,10 +225,13 @@ class _CameraDetectorState extends State<CameraDetector> {
   }
 
   Future<void> _toggleCameraDirection() async {
+
     if (_direction == CameraLensDirection.back) {
       _direction = CameraLensDirection.front;
+      _camPos = false;
     } else {
       _direction = CameraLensDirection.back;
+      _camPos = true;
     }
 
     await _camera.stopImageStream();

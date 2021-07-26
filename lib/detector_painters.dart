@@ -68,16 +68,15 @@ const List<Point<int>> faceMaskConnections = [
 ];
 
 class FaceDetectorLandmarkPainter extends CustomPainter {
-  FaceDetectorLandmarkPainter(this.absoluteImageSize, this.results);
+  FaceDetectorLandmarkPainter(this.absoluteImageSize, this.results, this.camPos);
 
   final Size absoluteImageSize;
-  //final List<Face> faces;
-
   dynamic results;
-  //Face face;
+  bool camPos;
 
   @override
   void paint(Canvas canvas, Size size) {
+
     final double scaleX = size.width / absoluteImageSize.width;
     final double scaleY = size.height / absoluteImageSize.height;
 
@@ -93,7 +92,7 @@ class FaceDetectorLandmarkPainter extends CustomPainter {
     for (String label in results.keys) {
       for (final Face face in results[label]) {
         final contour = face.getContour((FaceContourType.allPoints));
-        if (Platform.isAndroid) {
+        if (Platform.isAndroid && !camPos) {
           canvas.drawPoints(
               ui.PointMode.points,
               contour.positionsList
@@ -101,7 +100,7 @@ class FaceDetectorLandmarkPainter extends CustomPainter {
                   Offset(size.width - (offset.dx * scaleX), offset.dy * scaleY))
                   .toList(),
               paint);
-        } else if (Platform.isIOS) {
+        } else if (Platform.isIOS || camPos) {
           canvas.drawPoints(
               ui.PointMode.points,
               contour.positionsList
@@ -111,53 +110,59 @@ class FaceDetectorLandmarkPainter extends CustomPainter {
               paint);
         }
         for (final connection in faceMaskConnections) {
-          if (Platform.isAndroid) {
+          if (Platform.isAndroid && !camPos) {
             if(contour.positionsList != null && contour.positionsList.length != 0) {
-            double tmpDxConnectionX = size.width -
-                contour.positionsList[connection.x]
-                    .scale(scaleX, scaleY)
-                    .dx;
-            double tmpDyConnectionX = contour.positionsList[connection.x]
-                .scale(scaleX, scaleY)
-                .dy;
-            Offset a = Offset(tmpDxConnectionX, tmpDyConnectionX);
-            double tmpDxConnectionY = size.width -
-                contour.positionsList[connection.y]
-                    .scale(scaleX, scaleY)
-                    .dx;
-            double tmpDyConnectionY = contour.positionsList[connection.y]
-                .scale(scaleX, scaleY)
-                .dy;
-            Offset b = Offset(tmpDxConnectionY, tmpDyConnectionY);
-            canvas.drawLine(a, b, paint);
-          }
-          } else if (Platform.isIOS) {
-            canvas.drawLine(
-                contour.positionsList[connection.x].scale(scaleX, scaleY),
-                contour.positionsList[connection.y].scale(scaleX, scaleY),
-                paint);
+              double tmpDxConnectionX = size.width -
+                  contour.positionsList[connection.x]
+                      .scale(scaleX, scaleY)
+                      .dx;
+              double tmpDyConnectionX = contour.positionsList[connection.x]
+                  .scale(scaleX, scaleY)
+                  .dy;
+              Offset a = Offset(tmpDxConnectionX, tmpDyConnectionX);
+              double tmpDxConnectionY = size.width -
+                  contour.positionsList[connection.y]
+                      .scale(scaleX, scaleY)
+                      .dx;
+              double tmpDyConnectionY = contour.positionsList[connection.y]
+                  .scale(scaleX, scaleY)
+                  .dy;
+              Offset b = Offset(tmpDxConnectionY, tmpDyConnectionY);
+              canvas.drawLine(a, b, paint);
+            }
+          } else if (Platform.isIOS || camPos) {
+            if(contour.positionsList != null && contour.positionsList.length != 0) {
+              canvas.drawLine(
+                  contour.positionsList[connection.x].scale(scaleX, scaleY),
+                  contour.positionsList[connection.y].scale(scaleX, scaleY),
+                  paint);
+            }
           }
         }
         if (label == "NOT RECOGNIZED") {
           linePaint.color = Colors.purple;
         }
-        if (Platform.isAndroid) {
+        if (Platform.isAndroid && !camPos) {
           canvas.drawRRect(
               _scaleRect(
                   rect: face.boundingBox,
                   imageSize: absoluteImageSize,
                   widgetSize: size,
                   scaleX: scaleX,
-                  scaleY: scaleY),
+                  scaleY: scaleY,
+                  cameraPosition: camPos
+              ),
               linePaint);
-        } else if (Platform.isIOS) {
+        } else if (Platform.isIOS || camPos) {
           canvas.drawRect(
               _scaleRect(
                   rect: face.boundingBox,
                   imageSize: absoluteImageSize,
                   widgetSize: size,
                   scaleX: scaleX,
-                  scaleY: scaleY),
+                  scaleY: scaleY,
+                  cameraPosition: camPos
+              ),
               linePaint);
         }
         TextSpan span = new TextSpan(
@@ -170,13 +175,13 @@ class FaceDetectorLandmarkPainter extends CustomPainter {
             textAlign: TextAlign.left,
             textDirection: TextDirection.ltr);
         textPainter.layout();
-        if (Platform.isAndroid) {
+        if (Platform.isAndroid && !camPos) {
           textPainter.paint(
               canvas,
               new Offset(
                   size.width - (face.boundingBox.left.toDouble()) * scaleX,
                   (face.boundingBox.top.toDouble() ) * scaleY));
-        } else if (Platform.isIOS) {
+        } else if (Platform.isIOS || camPos) {
           textPainter.paint(
               canvas,
               new Offset(
@@ -195,10 +200,12 @@ class FaceDetectorLandmarkPainter extends CustomPainter {
 }
 //Draw Face rectangle with Name on it
 class FaceDetectorNormalPainter extends CustomPainter {
-  FaceDetectorNormalPainter(this.imageSize, this.results);
+  FaceDetectorNormalPainter(this.imageSize, this.results, this.camPos);
   final Size imageSize;
   double scaleX, scaleY;
   dynamic results;
+  bool camPos;
+
   Face face;
   @override
   void paint(Canvas canvas, Size size) {
@@ -214,23 +221,27 @@ class FaceDetectorNormalPainter extends CustomPainter {
         if (label == "NOT RECOGNIZED") {
           paint.color = Colors.purple;
         }
-        if (Platform.isAndroid) {
+        if (Platform.isAndroid && !camPos) {
           canvas.drawRRect(
               _scaleRect(
                   rect: face.boundingBox,
                   imageSize: imageSize,
                   widgetSize: size,
                   scaleX: scaleX,
-                  scaleY: scaleY),
+                  scaleY: scaleY,
+                  cameraPosition: camPos
+              ),
               paint);
-        } else if (Platform.isIOS) {
+        } else if (Platform.isIOS || camPos) {
           canvas.drawRect(
               _scaleRect(
                   rect: face.boundingBox,
                   imageSize: imageSize,
                   widgetSize: size,
                   scaleX: scaleX,
-                  scaleY: scaleY),
+                  scaleY: scaleY,
+                  cameraPosition: camPos
+              ),
               paint);
         }
         TextSpan span = new TextSpan(
@@ -242,13 +253,13 @@ class FaceDetectorNormalPainter extends CustomPainter {
             textAlign: TextAlign.left,
             textDirection: TextDirection.ltr);
         textPainter.layout();
-        if(Platform.isIOS) {
+        if(Platform.isIOS || camPos) {
         textPainter.paint(
             canvas,
             new Offset(
                 (10 + face.boundingBox.left.toDouble()) * scaleX,
                 (face.boundingBox.top.toDouble() - 15) * scaleY));
-        } else if (Platform.isAndroid) {
+        } else if (Platform.isAndroid && camPos) {
           textPainter.paint(
               canvas,
               new Offset(
@@ -270,11 +281,14 @@ dynamic _scaleRect(
       @required Size imageSize,
       @required Size widgetSize,
       double scaleX,
-      double scaleY}) {
+      double scaleY,
+      bool cameraPosition
+    }
+      ) {
   RRect _rRect;
   Rect _rect;
   dynamic result;
-  if (Platform.isAndroid) {
+  if (Platform.isAndroid && !cameraPosition ) {
     _rRect = RRect.fromLTRBR(
         (widgetSize.width - rect.left.toDouble() * scaleX),
         rect.top.toDouble() * scaleY,
@@ -282,7 +296,7 @@ dynamic _scaleRect(
         rect.bottom.toDouble() * scaleY,
         Radius.circular(10));
     result = _rRect;
-  } else if (Platform.isIOS) {
+  } else if (Platform.isIOS || cameraPosition) {
     _rect = Rect.fromLTRB(
       rect.left * scaleX,
       rect.top * scaleY,
