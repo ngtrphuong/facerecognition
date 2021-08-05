@@ -259,7 +259,7 @@ class FaceDetectorNormalPainter extends CustomPainter {
             new Offset(
                 (10 + face.boundingBox.left.toDouble()) * scaleX,
                 (face.boundingBox.top.toDouble() - 15) * scaleY));
-        } else if (Platform.isAndroid && camPos) {
+        } else if (Platform.isAndroid && !camPos) {
           textPainter.paint(
               canvas,
               new Offset(

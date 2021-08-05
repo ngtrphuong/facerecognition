@@ -6,6 +6,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:quiver/collection.dart';
 import 'package:image/image.dart' as imglib;
 import 'package:camera/camera.dart';
@@ -44,6 +45,9 @@ class _CameraDetectorState extends State<CameraDetector> {
   CameraLensDirection _direction = CameraLensDirection.front;
   bool _faceFound = false;
   bool _camPos = false;
+  String _displayBase64FaceImage = "";
+  String _faceName = "Not Recognized";
+  bool _addFaceScreen = false;
 
   final FaceDetector _faceDetector = GoogleVision.instance
       .faceDetector(FaceDetectorOptions(
@@ -61,31 +65,9 @@ class _CameraDetectorState extends State<CameraDetector> {
   }
 
   Future loadModel() async {
-    //tfl.Delegate delegate;
     try {
-      /*
-      if (Platform.isAndroid) {
-        delegate = tfl.GpuDelegateV2(
-        options: tfl.GpuDelegateOptionsV2(
-          false,
-          tfl.TfLiteGpuInferenceUsage.fastSingleAnswer,
-          tfl.TfLiteGpuInferencePriority.minLatency,
-          tfl.TfLiteGpuInferencePriority.auto,
-          tfl.TfLiteGpuInferencePriority.auto,
-        ));
-      } else if (Platform.isIOS) {
-        delegate = tfl.GpuDelegate(
-          options: tfl.GpuDelegateOptions(
-              true,
-              tfl.TFLGpuDelegateWaitType.active
-          ),
-        );
-      }
-      var interpreterOptions = tfl.InterpreterOptions()..addDelegate(delegate);
-      */
       this.interpreter = await tfl.Interpreter.fromAsset('mobilefacenet.tflite');
-      //this.interpreter = await tfl.Interpreter.fromAsset('mobilefacenet.tflite',
-      //    options: interpreterOptions);
+
       print('**********\n Loaded successfully model mobilefacenet.tflite \n*********\n');
     } catch (e) {
       print('Failed to load model.');
@@ -116,6 +98,7 @@ class _CameraDetectorState extends State<CameraDetector> {
     _savedFacesDir = await getApplicationDocumentsDirectory();
     String _fullPathSavedFaces = _savedFacesDir.path + '/savedFaces.json';
     jsonFile = new File(_fullPathSavedFaces);
+
     if (jsonFile.existsSync()) {
       data = json.decode(jsonFile.readAsStringSync());
       print('Saved faced from memory: ' + data.toString());
@@ -152,9 +135,13 @@ class _CameraDetectorState extends State<CameraDetector> {
             h = (_face.boundingBox.height + 10);
             imglib.Image croppedImage = imglib.copyCrop(
                 convertedImage, x.round(), y.round(), w.round(), h.round());
+            //Store detected face into
+            _displayBase64FaceImage = base64Encode(imglib.encodeJpg(croppedImage));
+
             croppedImage = imglib.copyResizeCropSquare(croppedImage, 112);
             // int startTime = new DateTime.now().millisecondsSinceEpoch;
             res = _recognizeFace(croppedImage);
+            _faceName = res;
             // int endTime = new DateTime.now().millisecondsSinceEpoch;
             // print("Inference took ${endTime - startTime}ms");
             finalResults.add(res, _face);
@@ -224,6 +211,35 @@ class _CameraDetectorState extends State<CameraDetector> {
     );
   }
 
+  Widget _buildStack() {
+    return Stack(
+      alignment: const Alignment(-1, 1),
+      children: [
+        _buildImage(),
+        CircleAvatar(
+          backgroundColor: Colors.black12,
+          //backgroundImage: AssetImage('assets/face.jpg'),
+          foregroundImage: (_displayBase64FaceImage != "" && _faceFound && !_addFaceScreen ?
+              MemoryImage(base64Decode(_displayBase64FaceImage)) :  AssetImage('assets/background.jpg')),
+          radius: 30,
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            color: Colors.black45,
+          ),
+          child: Text(
+            _faceName,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _toggleCameraDirection() async {
 
     if (_direction == CameraLensDirection.back) {
@@ -278,7 +294,7 @@ class _CameraDetectorState extends State<CameraDetector> {
           ),
         ],
       ),
-      body: _buildImage(),
+      body: _buildStack(),
       floatingActionButton:
       Column(mainAxisAlignment: MainAxisAlignment.end, children: [
         FloatingActionButton(
@@ -389,10 +405,21 @@ class _CameraDetectorState extends State<CameraDetector> {
       _camera = null;
     });
     print("Adding new face");
+    _addFaceScreen = true;
     var alert = new AlertDialog(
       title: new Text("Add Face"),
       content: new Row(
         children: <Widget>[
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+            ),
+            child:
+              Image(
+                image: (_displayBase64FaceImage != "" && _faceFound ?
+                MemoryImage(base64Decode(_displayBase64FaceImage)) :  AssetImage('assets/background.jpg')),
+              )
+          ),
           new Expanded(
             child: new TextField(
               controller: _name,
@@ -425,6 +452,7 @@ class _CameraDetectorState extends State<CameraDetector> {
         builder: (context) {
           return alert;
         });
+    _addFaceScreen = false;
   }
 
   void _handleWriteJSON(String text) {

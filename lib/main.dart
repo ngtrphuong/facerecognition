@@ -24,7 +24,7 @@ class _FaceRecognition extends StatefulWidget {
   State<StatefulWidget> createState() => _FaceRecognitionState();
 }
 
-class _FaceRecognitionState extends State<_FaceRecognition> {
+class _FaceRecognitionState extends State<_FaceRecognition> with WidgetsBindingObserver {
   static final List<String> _faceRecogWidgetName = <String>[
     '$CameraDetector',
   ];
