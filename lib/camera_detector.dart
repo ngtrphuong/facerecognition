@@ -1,6 +1,7 @@
 // Google ML Vision Face Detection and recognition app
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+// TO-DO: Add Anti-spoofing to detect not human face in face recognition
 
 // @dart=2.9
 
@@ -29,7 +30,7 @@ class CameraDetector extends StatefulWidget {
   State<StatefulWidget> createState() => _CameraDetectorState();
 }
 
-class _CameraDetectorState extends State<CameraDetector> {
+class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObserver {
 
   File jsonFile;
   dynamic data = {};
@@ -49,6 +50,8 @@ class _CameraDetectorState extends State<CameraDetector> {
   String _faceName = "Not Recognized";
   bool _addFaceScreen = false;
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   final FaceDetector _faceDetector = GoogleVision.instance
       .faceDetector(FaceDetectorOptions(
         enableLandmarks: true,
@@ -61,7 +64,37 @@ class _CameraDetectorState extends State<CameraDetector> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeCamera();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController camController = _camera;
+    if (camController == null || !camController.value.isInitialized) {
+      return;
+    }
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        print("App is in resumed");
+        _currentDetector = Detector.face;
+        _initializeCamera();
+        break;
+      case AppLifecycleState.inactive:
+        print("App is in inactive - no need to do anything");
+        break;
+      case AppLifecycleState.paused:
+        print("App is in paused - dispose Camera Controller and ImageStream");
+        if (camController != null) {
+          camController.stopImageStream();
+          camController.dispose();
+        }
+        break;
+      case AppLifecycleState.detached:
+        print("App is in detached");
+        break;
+    }
   }
 
   Future loadModel() async {
@@ -77,8 +110,10 @@ class _CameraDetectorState extends State<CameraDetector> {
 
   Future<void> _initializeCamera() async {
     await loadModel();
-    final CameraDescription description =
-    await ScannerUtils.getCamera(_direction);
+    if(_camera != null) {
+      await _camera.dispose();
+    }
+    final CameraDescription description = await ScannerUtils.getCamera(_direction);
 
     if (_direction == CameraLensDirection.front) {
       _camPos = false;
@@ -93,6 +128,21 @@ class _CameraDetectorState extends State<CameraDetector> {
           : ResolutionPreset.low,
       enableAudio: false,
     );
+
+    void showInSnackBar(String message) {
+      // ignore: deprecated_member_use
+      _scaffoldKey.currentState?.showSnackBar(SnackBar(content: Text(message)));
+    }
+
+    // If the controller is updated then update the UI.
+    _camera.addListener(() {
+      if (mounted) setState(() {});
+      if (_camera.value.hasError) {
+        showInSnackBar(
+            'Camera error ${_camera.value.errorDescription}');
+      }
+    });
+
     await _camera.initialize();
     //Load file from assets directory to store the detected faces
     _savedFacesDir = await getApplicationDocumentsDirectory();
@@ -219,8 +269,10 @@ class _CameraDetectorState extends State<CameraDetector> {
         CircleAvatar(
           backgroundColor: Colors.black12,
           //backgroundImage: AssetImage('assets/face.jpg'),
-          foregroundImage: (_displayBase64FaceImage != "" && _faceFound && !_addFaceScreen ?
-              MemoryImage(base64Decode(_displayBase64FaceImage)) :  AssetImage('assets/background.jpg')),
+          foregroundImage: (_displayBase64FaceImage != "" && _faceFound &&
+              !_addFaceScreen ?
+          MemoryImage(base64Decode(_displayBase64FaceImage)) : AssetImage(
+              'assets/background.jpg')),
           radius: 30,
         ),
         Container(
@@ -524,11 +576,11 @@ class _CameraDetectorState extends State<CameraDetector> {
 
   @override
   void dispose() {
+    super.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     _camera.dispose().then((_) {
       _faceDetector.close();
     });
-
     _currentDetector = null;
-    super.dispose();
   }
 }
