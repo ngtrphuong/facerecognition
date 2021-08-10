@@ -19,8 +19,9 @@ import 'package:tflite_flutter/tflite_flutter.dart' as tfl;
 
 import 'detector_painters.dart';
 import 'detector_utils.dart';
+import 'anti_spoofing.dart';
 
-enum Choice {view, delete, landmarkFace, normalFace }
+enum Choice {view, delete, landmarkFace, normalFace, antiSpoofing, removeSpoofing }
 bool _landMarkFace = false;
 
 class CameraDetector extends StatefulWidget {
@@ -49,6 +50,8 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
   String _displayBase64FaceImage = "";
   String _faceName = "Not Recognized";
   bool _addFaceScreen = false;
+  String spoofDetectOutput;
+  bool _enableAntiSpoofing = false;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -106,6 +109,7 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
       print('Failed to load model.');
       print(e);
     }
+    FaceAntiSpoofing.loadSpoofModel();
   }
 
   Future<void> _initializeCamera() async {
@@ -192,6 +196,10 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
             // int startTime = new DateTime.now().millisecondsSinceEpoch;
             res = _recognizeFace(croppedImage);
             _faceName = res;
+            //Judge the detected face for anti spoofing purpose
+            if (_enableAntiSpoofing) {
+              spoofDetectOutput = FaceAntiSpoofing.antiSpoofing(croppedImage, croppedImage);
+            }
             // int endTime = new DateTime.now().millisecondsSinceEpoch;
             // print("Inference took ${endTime - startTime}ms");
             finalResults.add(res, _face);
@@ -280,7 +288,7 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
             color: Colors.black45,
           ),
           child: Text(
-            _faceName,
+            (spoofDetectOutput != null ? spoofDetectOutput: _faceName),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -324,6 +332,8 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
               else if (result == Choice.view) _viewLabels();
               else if (result == Choice.landmarkFace) _landMarkFace = true;
               else if (result == Choice.normalFace) _landMarkFace = false;
+              else if (result == Choice.antiSpoofing) _enableAntiSpoofing = true;
+              else if (result == Choice.removeSpoofing) _enableAntiSpoofing = false;
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<Choice>>[
               const PopupMenuItem<Choice>(
@@ -341,6 +351,14 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
               const PopupMenuItem<Choice>(
                 value: Choice.normalFace,
                 child: Text('Normal Faces'),
+              ),
+              const PopupMenuItem<Choice>(
+                value: Choice.antiSpoofing,
+                child: Text('Enable AntiSpoofing'),
+              ),
+              const PopupMenuItem<Choice>(
+                value: Choice.removeSpoofing,
+                child: Text('Disable AntiSpoofing'),
               ),
             ],
           ),
