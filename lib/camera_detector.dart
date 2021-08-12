@@ -8,6 +8,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/rendering.dart';
 import 'package:quiver/collection.dart';
 import 'package:image/image.dart' as imglib;
 import 'package:camera/camera.dart';
@@ -46,7 +47,7 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
   bool _isDetecting = false;
   CameraLensDirection _direction = CameraLensDirection.front;
   bool _faceFound = false;
-  bool _camPos = false;
+  bool _camPos = false; //FALSE means Front Camera and TRUE means Back Camera
   String _displayBase64FaceImage = "";
   String _faceName = "Not Recognized";
   bool _addFaceScreen = false;
@@ -159,7 +160,6 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
     }
     await _camera.startImageStream((CameraImage image) {
       if (_isDetecting) return;
-
       _isDetecting = true;
 
       String res;
@@ -178,19 +178,34 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
             _faceFound = true;
           }
           // Start storing faces and use Tensorflow to recognize
+          var croppedBoundary = 0;
           Face _face;
           imglib.Image convertedImage =
           _convertCameraImage(image, _direction);
+          if (Platform.isIOS) {
+            if (!_camPos) {
+              convertedImage = imglib.copyRotate(convertedImage, 90);
+            } else {
+              convertedImage = imglib.copyRotate(convertedImage, -90);
+            }
+          }
           for (_face in results) {
             double x, y, w, h;
-            x = (_face.boundingBox.left - 10);
-            y = (_face.boundingBox.top - 10);
-            w = (_face.boundingBox.width + 10);
-            h = (_face.boundingBox.height + 10);
-            imglib.Image croppedImage = imglib.copyCrop(
-                convertedImage, x.round(), y.round(), w.round(), h.round());
+            x = (_face.boundingBox.left - croppedBoundary);
+            y = (_face.boundingBox.top - croppedBoundary);
+            w = (_face.boundingBox.width + croppedBoundary);
+            h = (_face.boundingBox.height + croppedBoundary);
+            imglib.Image croppedImage;
+            if (Platform.isAndroid) {
+              croppedImage = imglib.copyCrop(
+                  convertedImage, x.round(), y.round(), w.round(), h.round());
+            } else {
+              croppedImage = imglib.copyCrop(
+                    convertedImage, x.round(), y.round(), w.round(), h.round());
+            }
             //Store detected face into
-            _displayBase64FaceImage = base64Encode(imglib.encodeJpg(croppedImage));
+            _displayBase64FaceImage = base64Encode(imglib.encodeJpg(
+                imglib.copyResize(croppedImage, width: 200, height: 200)));
 
             croppedImage = imglib.copyResizeCropSquare(croppedImage, 112);
             // int startTime = new DateTime.now().millisecondsSinceEpoch;

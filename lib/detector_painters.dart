@@ -73,12 +73,14 @@ class FaceDetectorLandmarkPainter extends CustomPainter {
   final Size absoluteImageSize;
   dynamic results;
   bool camPos;
+  Size widgetSize;
 
   @override
   void paint(Canvas canvas, Size size) {
 
     final double scaleX = size.width / absoluteImageSize.width;
     final double scaleY = size.height / absoluteImageSize.height;
+    widgetSize = size;
 
     final Paint paint = Paint()
       ..style = PaintingStyle.stroke
@@ -213,6 +215,7 @@ class FaceDetectorNormalPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0
       ..color = Colors.greenAccent;
+    //print('=============Painter() size: $size =============');
     for (String label in results.keys) {
       for (Face face in results[label]) {
         // face = results[label];

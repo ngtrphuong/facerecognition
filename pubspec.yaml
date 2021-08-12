@@ -15,7 +15,7 @@ dependencies:
     sdk: flutter
   image_picker: ^0.6.0
   image: ^3.0.2
-  tflite_flutter: ^0.9.0
+  tflite_flutter: ^0.8.0
   path_provider: ^2.0.2
   bitmap: ^0.1.2
 
