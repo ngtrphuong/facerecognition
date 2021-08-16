@@ -8,6 +8,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
 import 'package:quiver/collection.dart';
 import 'package:image/image.dart' as imglib;
@@ -182,6 +183,7 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
           Face _face;
           imglib.Image convertedImage =
           _convertCameraImage(image, _direction);
+          /*
           if (Platform.isIOS) {
             if (!_camPos) {
               convertedImage = imglib.copyRotate(convertedImage, 90);
@@ -189,6 +191,7 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
               convertedImage = imglib.copyRotate(convertedImage, -90);
             }
           }
+          */
           for (_face in results) {
             double x, y, w, h;
             x = (_face.boundingBox.left - croppedBoundary);
@@ -290,13 +293,17 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
       children: [
         _buildImage(),
         CircleAvatar(
-          backgroundColor: Colors.black12,
-          //backgroundImage: AssetImage('assets/face.jpg'),
-          foregroundImage: (_displayBase64FaceImage != "" && _faceFound &&
-              !_addFaceScreen ?
-          MemoryImage(base64Decode(_displayBase64FaceImage)) : AssetImage(
-              'assets/background.jpg')),
-          radius: 30,
+          backgroundColor: Colors.blue,
+          child: CircleAvatar(
+            backgroundColor: Colors.black12,
+            //backgroundImage: AssetImage('assets/face.jpg'),
+            foregroundImage: (_displayBase64FaceImage != "" && _faceFound &&
+                !_addFaceScreen ?
+            MemoryImage(base64Decode(_displayBase64FaceImage)) : AssetImage(
+                'assets/background.jpg')),
+            radius: 40,
+          ),
+          radius: 50,
         ),
         Container(
           decoration: const BoxDecoration(
@@ -492,8 +499,10 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
     print("Adding new face");
     _addFaceScreen = true;
     var alert = new AlertDialog(
+      scrollable: true,
       title: new Text("Add Face"),
-      content: new Row(
+      content: new Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Container(
             decoration: BoxDecoration(
@@ -501,11 +510,12 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
             ),
             child:
               Image(
+                height: 200,
                 image: (_displayBase64FaceImage != "" && _faceFound ?
                 MemoryImage(base64Decode(_displayBase64FaceImage)) :  AssetImage('assets/background.jpg')),
               )
           ),
-          new Expanded(
+          Container(
             child: new TextField(
               controller: _name,
               autofocus: true,
@@ -570,10 +580,10 @@ class _CameraDetectorState extends State<CameraDetector>  with WidgetsBindingObs
       format: imglib.Format.bgra,
     );
 
-    var img1 = (_dir == CameraLensDirection.front)
-        ? imglib.copyRotate(img, -90)
-        : imglib.copyRotate(img, 90);
-    return img1;
+    //var img1 = (_dir == CameraLensDirection.front)
+    //    ? imglib.copyRotate(img, -90)
+    //    : imglib.copyRotate(img, 90);
+    return img;
 
   }
 
